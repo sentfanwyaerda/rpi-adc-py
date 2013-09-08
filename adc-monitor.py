@@ -50,6 +50,16 @@ def readadc_avg(adcnum, clockpin, mosipin, misopin, cspin, size=50):
 	avg = sum(adcout) / len(adcout)
 	return avg
 
+def readadc_fft(adcnum, clockpin, mosipin, misopin, cspin):
+	adcout = readadc(adcnum, clockpin, mosipin, misopin, cspin)
+	return adcout
+
+def adc2temperature(adcout, VCC=5.0, R=1.0):
+	return ( ( (adcout / R ) * VCC ) - 500 ) / 10 
+
+def adc2percentage(adcout, depth=1):
+	return round( (adcout / 10.23), depth)
+
 # change these as desired - they're the pins connected from the
 # SPI port on the ADC to the Cobbler
 SPICLK = 18
@@ -57,8 +67,9 @@ SPIMISO = 23
 SPIMOSI = 24
 SPICS = 25
 
-VCC = 3.3
+VCC = 3.33333
 R = 1.000
+factor = R
 
 # set up the SPI interface pins
 GPIO.setup(SPIMOSI, GPIO.OUT)
@@ -66,7 +77,6 @@ GPIO.setup(SPIMISO, GPIO.IN)
 GPIO.setup(SPICLK, GPIO.OUT)
 GPIO.setup(SPICS, GPIO.OUT)
 
-factor = 1
 
 while True:
         # read the analog pins
@@ -77,21 +87,26 @@ while True:
 	adcpin4 = readadc_avg(4, SPICLK, SPIMOSI, SPIMISO, SPICS) / factor
 	adcpin5 = readadc_avg(5, SPICLK, SPIMOSI, SPIMISO, SPICS) / factor
 	adcpin6 = readadc(6, SPICLK, SPIMOSI, SPIMISO, SPICS) / factor
-	adcpin7 = readadc_avg(7, SPICLK, SPIMOSI, SPIMISO, SPICS) / factor
+	adcpin7 = readadc_fft(7, SPICLK, SPIMOSI, SPIMISO, SPICS) / factor
 
 	#value4 = (adcpin4 / 1.023) * 2.0
-	value4 = ( ( (adcpin4 / R ) * VCC ) - 500 ) / 10
+	#value4 = ( ( (adcpin4 / R ) * VCC ) - 500 ) / 10
+	value4 = adc2temperature(adcpin4, VCC, R)
 
-	#value5 = ( VCC * ( R / ( R + adcpin5 )) )
-	#value5 = ( ( adcpin5 / 10.23 ) * VCC )
-	#value5 = VCC * ( adcpin5 / R )
-	value5 = (adcpin5 / 10.23 )
+
+	##value5 = ( VCC * ( R / ( R + adcpin5 )) )
+	##value5 = ( ( adcpin5 / 10.23 ) * VCC )
+	##value5 = VCC * ( adcpin5 / R )
+	#value5 = (adcpin5 / 10.23 )
+	value5 = adc2percentage(adcpin5)
+
+	value7 = adcpin7
 
         if DEBUG:
 	       	print 'ADC: MCP3008 \t    0:[ {pin0}\t]   1:[ {pin1}\t]   2:[ {pin2}\t]   3:[ {pin3}\t]   4:[ {pin4}\t]   5:[ {pin5}\t]   6:[ {pin6}\t]   7:[ {pin7}\t]' .format(pin0 = adcpin0, pin1 = adcpin1, pin2 = adcpin2, pin3 = adcpin3, pin4 = adcpin4, pin5 = adcpin5, pin6 = adcpin6, pin7 = adcpin7)
 
 	if DEBUG != 2:
-		print 'ADC: Values:\t      [{empty}\t]     [{empty}\t]     [{empty}\t]     [{empty}\t]     [ {v4}*C\t] lux:[ {v5}%\t]     [{empty}\t]     [{empty}\t]' .format(v5 = round(value5, 1), v4 = round(value4,1), empty = "   " )
+		print 'ADC: Values:\t      [{empty}\t]     [{empty}\t]     [{empty}\t]     [{empty}\t]     [ {v4}*C\t] lux:[ {v5}%\t]     [{empty}\t]     [ {v7}\t]' .format(v5 = round(value5, 1), v4 = round(value4,1), empty = "   ", v7 = value7 )
 
         # hang out and do nothing for a half second
         time.sleep(0.05)
